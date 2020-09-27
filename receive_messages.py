@@ -6,6 +6,7 @@ from common import run_example
 import covid_data
 import weather_data
 import random
+import name_manager
 
 
 TARGET_CONVO_ID = ["UgySatjjT_zwYMjvfcl4AaABAQ", # Smol one with ash
@@ -17,6 +18,15 @@ TARGET_CONVO_ID = ["UgySatjjT_zwYMjvfcl4AaABAQ", # Smol one with ash
 bullied_people = [
     "1", #nobody
 ]
+
+
+def getName(user_id_obj):
+    name = name_manager.getName(user_id_obj.chat_id)
+    if name is False:
+        return user_list.get_user(user_id_obj).full_name
+    else:
+        return name
+
 async def receive_messages(client, args):
     print('loading conversation list...')
     global user_list
@@ -52,8 +62,10 @@ def on_event(conv_event):
                 ]
                 send_message(return_convo_id, random.choice(responses))
                 return 0
+            
             if cmdtxt.startswith("!hi"):
-                send_message(return_convo_id, f'Hi there {user_list.get_user(conv_event.user_id).first_name}.')
+
+                send_message(return_convo_id, f'Hi there {getName(conv_event.user_id)}.')
 
             elif cmdtxt == "!randomperson":
                 people = conv_list.get(return_convo_id).users
@@ -65,38 +77,47 @@ def on_event(conv_event):
                 "Imma choose ",
                 "Just go with ",
                 ]
-                send_message(return_convo_id, random.choice(responses)+random.choice(people).full_name)
+                person = random.choice(people)
+                received_name = getName(person.id_)
+                hangouts_name = person.full_name
+                if received_name == hangouts_name:
+                    name = received_name
+                else:
+                    name = f"{received_name} ({hangouts_name})"
+                send_message(return_convo_id, random.choice(responses)+name)
 
             elif cmdtxt == "!help":
-                send_message(return_convo_id, "Some commands you can try are: !bruh, !repeat, !hi, !time, !mdcovid, !kmk, !randomperson, !uscovid, !weather, !lovecalc, !help.")
+
+                send_message(return_convo_id, "Some commands you can try are: !bruh, !callme, !repeat, !hi, !time, !mdcovid, !kmk, !randomperson, !uscovid, !weather, !lovecalc, !help.")
 
             elif cmdtxt.startswith("!repeat "):
                 txt = cmdtxt.replace("!repeat ", "")
                 send_message(return_convo_id, f'You said: {txt}')
 
             elif cmdtxt == "language":
+
                 send_message(return_convo_id, "Hello you fucking bot. My fucking name is fucking ShitPissCum1312 and I am a fucking bot fucking made by some fucking mother-fuckung-fucker who was really fucking annoyed by your fucking comments with a fucking purpose of fucking telling you to fucking shut the fuck up. What the fucking fuck are you even fucking trying to fucking achieve by fucking doing this fucking shit fucking over and over? No fucking one is fucking going to fucking stop fucking saying fucking fuck just because you fucking told them so. Fuck you all and have a nice fucking day. Fuck.")
 
             elif cmdtxt == "!time":
+
                 the_time = conv_event.timestamp - timedelta(hours=4)
                 send_message(return_convo_id, f'The time is {the_time.hour}:{the_time.minute}:{the_time.second}.')
             
-            
             elif cmdtxt == "!mdcovid":
+
                 send_message(return_convo_id, f'There have been {"{:,}".format(covid_data.md_covid())} reported cases in Maryland.')
             
-            
             elif cmdtxt == "!uscovid":
+
                 send_message(return_convo_id, f'There have been {covid_data.us_covid()} reported cases in the US.')
         
-
             elif cmdtxt == "!weather":
+
                 send_message(return_convo_id, f'It is currently {weather_data.ellicott_city()}° in Ellicott City.')
         
-
             elif cmdtxt == "!bruh":
-                    send_message(return_convo_id, 'bruh')
 
+                    send_message(return_convo_id, 'bruh')
 
             elif cmdtxt.startswith("!lovecalc"):
                 people = cmdtxt.replace('!lovecalc ', '')
@@ -118,8 +139,13 @@ def on_event(conv_event):
                 else:
                     send_message(return_convo_id, "Correct format is !kmk <person1> <person2> <person3>")
 
-        # UgykUAGlU7YTgn7SqDZ4AaABAQ (Pranking)
-
+            elif cmdtxt.startswith('!callme'):
+                if cmdtxt.count(' ')>=1 and len(cmdtxt)>8:
+                    name = conv_event.text[8:]
+                    user_id = conv_event.user_id.chat_id
+                    send_message(return_convo_id, f"Set your name to {name_manager.setName(user_id, name)}" )
+                else:
+                    send_message(return_convo_id, f"Correct Format: !callme <name>.")
 
 if __name__ == '__main__':
     run_example(receive_messages)
