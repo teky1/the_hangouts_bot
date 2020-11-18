@@ -1,20 +1,22 @@
 import asyncio
 from datetime import datetime, timedelta
 import hangups
-from actual_send_message import send_message
+from actual_send_message import *
 from common import run_example
+import msg_data_manipulator as mdm
 import covid_data
 import weather_data
 import random
 import name_manager
+import graphs
 
 
 TARGET_CONVO_ID = ["UgySatjjT_zwYMjvfcl4AaABAQ", # Smol one with ash
-                   "UgxDGV0wLrqmNtJl6AF4AaABAQ", # Strange Children dwell in this place
                    "UgykUAGlU7YTgn7SqDZ4AaABAQ", # Pranking
                    "Ugyh42XnZTkgwWOdSXx4AaABAQ", # spicy food
                    "Ugxbq8_Rirg4LzaJIwt4AaABAQ", # Among us thing with 8th graders
                    ]
+TIMEOUT_CONVO_ID = []
 
 bullied_people = [
     "1", #nobody
@@ -24,21 +26,28 @@ AUTHORIZED_ADMINS = [
     "107091478556168807541", #Joel
 ]
 
-def getName(user_id_obj):
+def getName(user_id_obj, userlist=None):
+    if userlist == None:
+        userlist = user_list
     name = name_manager.getName(user_id_obj.chat_id)
     if name is False:
-        return user_list.get_user(user_id_obj).full_name
+        return userlist.get_user(user_id_obj).full_name
     else:
         return name
 
 async def timeout(conv_id_str, length):
-    send_message(conv_id_str, f'Started timeout for {int(length/60)} minutes.')
+    send_message(conv_id_str, f'You all are getting a timeout for {int(length/60)} minutes.')
     for i in range(len(TARGET_CONVO_ID)):
         if TARGET_CONVO_ID[i] == conv_id_str:
             index = i
+    TIMEOUT_CONVO_ID.append(conv_id_str)
     TARGET_CONVO_ID[index] = ""
     await asyncio.sleep(length)
     TARGET_CONVO_ID[index] = conv_id_str
+    for i in range(len(TIMEOUT_CONVO_ID)):
+        if TIMEOUT_CONVO_ID[i] == conv_id_str:
+            TIMEOUT_CONVO_ID[i] == ""
+            break
     send_message(conv_id_str, 'Timeout ended. Be good boys and girls now!')
 
 async def receive_messages(client, args):
@@ -58,6 +67,7 @@ async def receive_messages(client, args):
 async def on_event(conv_event):
     if isinstance(conv_event, hangups.ChatMessageEvent):
         if conv_event.conversation_id in TARGET_CONVO_ID:
+            mdm.newMsg(conv_event.conversation_id, conv_event.user_id.chat_id)
             print(user_list.get_user(conv_event.user_id).full_name+':', conv_event.text)
             return_convo_id = conv_event.conversation_id
             cmdtxt = conv_event.text.lower().strip()
@@ -102,7 +112,7 @@ async def on_event(conv_event):
 
             elif cmdtxt == "!help":
 
-                send_message(return_convo_id, "Some commands you can try are: !bruh, !callme, !repeat, !hi, !time, !mdcovid, !kmk, !randomperson, !uscovid, !weather, !lovecalc, !help.")
+                send_message(return_convo_id, "Some commands you can try are: !bruh, !callme, !repeat, !hi, !time, !mdcovid, !kmk, !randomperson, !graph, !uscovid, !msgdata, !weather, !lovecalc, !help.")
 
             elif cmdtxt.startswith("!repeat "):
                 txt = cmdtxt.replace("!repeat ", "")
@@ -132,7 +142,11 @@ async def on_event(conv_event):
         
             elif cmdtxt == "!bruh":
 
-                    send_message(return_convo_id, 'bruh')
+                send_message(return_convo_id, 'bruh\n bruh')
+
+            elif cmdtxt == "!rawmsgdata":
+
+                send_message(return_convo_id, str(mdm.the_data))
 
             elif cmdtxt.startswith("!lovecalc"):
                 people = cmdtxt.replace('!lovecalc ', '')
@@ -176,6 +190,43 @@ async def on_event(conv_event):
                 else:
                     send_message(return_convo_id, "You are not authorized to use this command.")
 
+            elif cmdtxt.startswith('!msgdata'):
+                data = mdm.the_data[return_convo_id][datetime.today().strftime("%m/%d/%y")]
+                people = conv_list.get(return_convo_id).users
+                output = "Today's Message Counts >>> \n"
+                total = 0
+
+                for item in data.keys():
+                    total += data[item]
+                    for ppl in people:
+                        if ppl.id_.chat_id == item:
+                            person = ppl
+                            break
+                    
+                    received_name = getName(person.id_)
+                    hangouts_name = person.full_name
+                    
+                    
+                    person_string = f"{received_name}: {data[item]}, \n"
+                    if received_name == False:
+                        person_string = f"{hangouts_name}: {data[item]}, \n"
+                    output += person_string
+                output += f"TOTAL >>> {total} messages"
+                send_message(return_convo_id, output)
+            elif cmdtxt.startswith('!graph'):
+                args = cmdtxt.replace('!graph ', "")
+
+                if args == "today":
+                    file = graphs.today(return_convo_id, conv_list.get(return_convo_id).users, user_list)
+                    send_image(return_convo_id, file)
+                elif args == "yesterday":
+                    file = graphs.yesterday(return_convo_id, conv_list.get(return_convo_id).users, user_list)
+                    send_image(return_convo_id, file)
+                else:
+                    send_message(return_convo_id, "Correct Format: !graph <graphType>   \n Available Graph Types: today")
+        
+        elif conv_event.conversation_id in TIMEOUT_CONVO_ID:
+            mdm.newMsg(conv_event.conversation_id, conv_event.user_id.chat_id)
 
 if __name__ == '__main__':
     run_example(receive_messages)
